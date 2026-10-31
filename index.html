@@ -146,12 +146,21 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .empty-t { margin: 0 0 4px; font-weight: 700; }
 .empty .chips { margin: 8px 0 0; padding: 0; flex-wrap: wrap; }
 
-/* 戻るバー（sticky） */
-.backbar { position: sticky; top: 0; z-index: 10; height: 48px; background: var(--surface); border-bottom: 1px solid var(--line); }
-.backbar .wrap { display: flex; align-items: center; gap: 8px; height: 100%; }
-.back { flex: none; max-width: 55%; height: 44px; padding: 0 8px 0 0; border: 0; background: none; color: var(--amber-dk); font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.backbar-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.backbar .fs { flex: none; }
+/* サイト名（左上・押すとトップへ） */
+.brand { color: inherit; text-decoration: none; }
+@media (hover: hover) { .brand:hover .brand-main { text-decoration: underline; text-underline-offset: 3px; } }
+.brand-sm { flex: none; display: flex; flex-direction: column; justify-content: center; min-height: 44px; color: #fff; text-decoration: none; font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; font-weight: 700; line-height: 1.2; }
+.brand-sm small { font-size: 10px; color: var(--gold); letter-spacing: .04em; }
+.brand-sm span { font-size: 14px; }
+
+/* 詳細ページの上部バー（sticky）：サイト名＋戻る */
+.backbar { position: sticky; top: 0; z-index: 10; height: 48px; background: var(--oak); border-bottom: 1px solid var(--gold-line); color: #fff; }
+.backbar .wrap { display: flex; align-items: center; gap: 10px; height: 100%; }
+.backbar :focus-visible { outline-color: var(--gold); box-shadow: none; }
+.bar-sep { flex: none; width: 1px; height: 24px; background: rgba(255,255,255,.3); }
+.back { flex: 0 1 auto; min-width: 0; height: 44px; padding: 0 4px; border: 0; background: none; color: #fff; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-space { flex: 1; }
+.backbar .fs { flex: none; color: var(--gold); }
 
 /* 出展社詳細 */
 .exhead { display: flex; gap: 16px; align-items: flex-start; padding: 20px 0 4px; }
@@ -494,10 +503,19 @@ function backInfo() {
   const hash = r.name === "product" ? exHref(r.e) : "#/";
   return { label: labelFor(hash), hash };
 }
-function backbar(title) {
+function backbar() {
   return `<div class="backbar"><div class="wrap">
+    <a class="brand-sm" href="#/" data-act="home" aria-label="トップページへ（ウイスキーフェス2026東京 非公式ボトルガイド）"><small>ウイスキーフェス2026東京</small><span>非公式ボトルガイド</span></a>
+    <span class="bar-sep" aria-hidden="true"></span>
     <button type="button" class="back" data-act="back">‹ ${esc(backInfo().label)}</button>
-    <span class="backbar-title">${esc(title)}</span>${fullscreenLink()}</div></div>`;
+    <span class="bar-space"></span>${fullscreenLink()}</div></div>`;
+}
+/* サイト名を押したとき：検索・絞り込みを解除したトップページの先頭へ */
+function goHome() {
+  S.q = ""; S.sel.clear(); S.more = false;
+  try { sessionStorage.removeItem("wf26-q"); } catch (e) { /* 無視 */ }
+  NAV.forceTop = true;
+  if ((location.hash || "#/") === "#/") onRoute(); else location.hash = "#/";
 }
 
 /* ===== 画面：ホーム ===== */
@@ -513,7 +531,7 @@ function chipsHtml() {
 function renderHome() {
   APP.innerHTML = `
   <header class="band"><div class="wrap">
-    <h1 tabindex="-1"><span class="band-sub">ウイスキーフェス2026東京</span>非公式ボトルガイド</h1>
+    <h1 tabindex="-1"><a class="brand" href="#/" data-act="home" aria-label="トップページへ（ウイスキーフェス2026東京 非公式ボトルガイド）"><span class="band-sub">ウイスキーフェス2026東京</span><span class="brand-main">非公式ボトルガイド</span></a></h1>
     <p class="band-event">11/6(金) 17:00– ／ 11/7(土) 10:00–・14:30–<br>東京国際フォーラム ホールE</p>
     ${fullscreenLink()}
   </div></header>
@@ -659,7 +677,7 @@ function renderEx(e) {
     .filter(([k]) => L[k]).map(([k, label]) => ext(L[k], label, "linkbtn")).join("");
   const sns = [...new Map(e.products.flatMap(p => p.sources || []).map(s => [s.url, s])).values()];
   const snsDates = [...new Set(sns.map(s => `${s.label}（${fmtDate(s.date)}）`))];
-  APP.innerHTML = `${backbar(boothName(e))}
+  APP.innerHTML = `${backbar()}
   <main class="wrap">
     <header class="exhead">${boothBadge(e, "lg")}<div class="exhead-main">
       <h1 tabindex="-1">${esc(e.name)}</h1>
@@ -725,7 +743,7 @@ function renderProduct(e, p) {
   const imgs = (p.images || []).slice(0, 4);
   const src0 = (p.sources || [])[0];
   const others = e.products.filter(x => x !== p && !x.lineup);
-  APP.innerHTML = `${backbar("")}
+  APP.innerHTML = `${backbar()}
   <main class="wrap pd">
     ${p.series || p.headline ? `<p class="pd-kicker">${esc([p.series, p.headline].filter(Boolean).join("・"))}</p>` : `<div class="pd-top"></div>`}
     <h1 tabindex="-1">${esc(p.name)}</h1>
@@ -751,7 +769,7 @@ function renderProduct(e, p) {
 /* ===== 画面：限定ボトル一覧 ===== */
 function renderLimited() {
   S.hl = null;
-  APP.innerHTML = `${backbar("限定ボトル一覧")}
+  APP.innerHTML = `${backbar()}
   <main class="wrap">
     <h1 class="page-h1" tabindex="-1">会場限定ボトル（${LIMITED.length}件）</h1>
     <p class="lead">公式の出品リストに「フェス限定」「イベント限定」「フェスボトル」などと書かれた商品と、出展社のSNSで告知された会場限定品です。「数量限定」「蒸溜所限定」などは含みません。ブースNo.順。</p>
@@ -774,7 +792,8 @@ function render(isBack) {
     const btn = APP.querySelector(`[data-target="${el.id}"]`);
     if (btn && el.scrollHeight <= el.clientHeight + 2) btn.hidden = true;
   });
-  window.scrollTo(0, isBack ? (NAV.scroll[location.hash || "#/"] || 0) : 0);
+  window.scrollTo(0, isBack && !NAV.forceTop ? (NAV.scroll[location.hash || "#/"] || 0) : 0);
+  NAV.forceTop = false;
   if (NAV.rendered) { const h1 = APP.querySelector("h1"); if (h1) h1.focus({ preventScroll: true }); }
   NAV.rendered = true;
 }
@@ -794,7 +813,9 @@ APP.addEventListener("click", ev => {
   if (!b) return;
   const act = b.dataset.act;
   const inp = document.getElementById("q");
-  if (act === "chip") {
+  if (act === "home") {
+    ev.preventDefault(); goHome();
+  } else if (act === "chip") {
     S.sel.has(b.dataset.k) ? S.sel.delete(b.dataset.k) : S.sel.add(b.dataset.k);
     S.more = false; updateResults();
   } else if (act === "clearsel") {
