@@ -219,6 +219,10 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .foot { margin-top: 40px; padding: 20px 0 32px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
 .foot p { margin: 0 0 8px; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+
+/* 設置時の寸法確認（URL に ?size を付けたときだけ表示） */
+.sizetag { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 100; padding: 6px 12px; border-radius: 999px; background: var(--focus); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+.sizetag.ok { background: var(--free); }
 </style>
 </head>
 <body>
@@ -462,7 +466,12 @@ function clampBlock(text, lines, id) {
 function standaloneUrl() {
   if (SITE.standaloneUrl) return SITE.standaloneUrl.replace(/#.*$/, "");
   /* URLで埋め込んだ場合は、iframe 内のこのページ自体が単独URL（コード貼り付けの場合は googleusercontent.com になるので出さない） */
-  if (/^https?:$/.test(location.protocol) && !/googleusercontent\.com$/.test(location.hostname)) return location.href.replace(/#.*$/, "");
+  if (/^https?:$/.test(location.protocol) && !/googleusercontent\.com$/.test(location.hostname)) {
+    const u = new URL(location.href);
+    u.hash = "";
+    u.searchParams.delete("size"); /* 寸法確認用の指定は全画面には引き継がない */
+    return u.toString();
+  }
   return "";
 }
 function fullscreenLink() {
@@ -848,6 +857,22 @@ APP.addEventListener("click", ev => {
     b.textContent = open ? "閉じる" : "続きを読む";
   }
 });
+
+/* 設置時の寸法確認：URL に ?size を付けて埋め込むと、枠の大きさと目安を表示する */
+if (/[?&]size\b/.test(location.search)) {
+  const tag = document.createElement("div");
+  tag.className = "sizetag";
+  document.body.appendChild(tag);
+  const show = () => {
+    const w = window.innerWidth, h = window.innerHeight;
+    const phone = w <= 480;
+    const ok = phone ? h >= 540 && h <= 640 : w >= 740 && w <= 860 && h >= 1200 && h <= 1400;
+    tag.textContent = `枠：幅 ${w} × 高さ ${h}px ` + (ok ? "◎ OK" : phone ? "（目安：高さ 約600）" : "（目安：幅 約800 × 高さ 約1300）");
+    tag.classList.toggle("ok", ok);
+  };
+  show();
+  window.addEventListener("resize", show);
+}
 
 onRoute();
 })();
